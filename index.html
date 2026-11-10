@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PakTools - Free Image & PDF Tools</title>
+<meta name="description" content="Free online image and PDF tools for Pakistan. Compress, resize and convert images easily.">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:#123c78;color:white;padding:22px 16px;text-align:center}
+header h1{margin:0;font-size:30px}
+header p{margin:9px 0 0;color:#dceaff}
+main{max-width:850px;margin:25px auto;padding:15px}
+.hero{text-align:center;padding:25px 5px}
+.hero h2{font-size:27px}
+.hero p{color:#667085;line-height:1.6}
+.tools{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.tool{background:white;padding:18px 10px;border-radius:12px;text-align:center;border:1px solid #e4eaf2}
+.tool span{font-size:27px}
+.tool h3{font-size:15px;margin:9px 0 0}
+.panel{background:white;margin-top:22px;padding:20px;border-radius:14px;box-shadow:0 3px 15px #0000000a}
+label{display:block;margin:15px 0 7px;font-weight:bold}
+input,select{width:100%;padding:13px;border:1px solid #ccd5e1;border-radius:8px;background:white}
+button{width:100%;padding:14px;margin-top:15px;border:0;border-radius:8px;background:#1763cc;color:white;font-weight:bold;font-size:16px}
+button:disabled{opacity:.5}
+#status{margin-top:15px;line-height:1.5}
+footer{text-align:center;padding:25px;color:#667085;font-size:13px}
+@media(min-width:600px){.tools{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<header>
+<h1>🇵🇰 PakTools</h1>
+<p>Free Image & PDF Tools</p>
+</header>
+
+<main>
+<section class="hero">
+<h2>Simple Tools. Free Forever.</h2>
+<p>Compress, resize and convert your images online.
+Easy to use on your mobile phone.</p>
+</section>
+
+<h2>Our Free Tools</h2>
+<section class="tools">
+<div class="tool"><span>🗜️</span><h3>Image Compressor</h3></div>
+<div class="tool"><span>📐</span><h3>Image Resizer</h3></div>
+<div class="tool"><span>🖼️</span><h3>JPG to PNG</h3></div>
+<div class="tool"><span>📷</span><h3>PNG to JPG</h3></div>
+<div class="tool"><span>📄</span><h3>JPG to PDF</h3></div>
+<div class="tool"><span>📁</span><h3>PDF Tools Coming Soon</h3></div>
+</section>
+
+<section class="panel">
+<h2>Use Image Tools</h2>
+
+<label>Select a tool</label>
+<select id="operation">
+<option value="compress">Image Compressor</option>
+<option value="resize">Image Resizer</option>
+<option value="png">JPG to PNG</option>
+<option value="jpg">PNG to JPG</option>
+<option value="pdf">JPG to PDF</option>
+</select>
+
+<label>Choose your image</label>
+<input type="file" id="file" accept="image/jpeg,image/png,image/webp">
+
+<label>Image quality (for compression)</label>
+<input type="range" id="quality" min="10" max="100" value="70">
+
+<label>New width in pixels (for resizing)</label>
+<input type="number" id="width" placeholder="Example: 800">
+
+<button id="process">Process Image</button>
+<div id="status" role="status"></div>
+</section>
+</main>
+
+<footer>
+<p>© 2026 PakTools. All rights reserved.</p>
+<p>Free online tools for everyone in Pakistan.</p>
+</footer>
+
+<script>
+const fileInput=document.getElementById("file");
+const statusBox=document.getElementById("status");
+
+document.getElementById("process").addEventListener("click",()=>{
+ const file=fileInput.files[0];
+ if(!file){statusBox.textContent="Please select an image first.";return;}
+ if(!file.type.startsWith("image/")){
+ statusBox.textContent="Please select a valid image.";return;
+ }
+ if(file.size>20*1024*1024){
+ statusBox.textContent="Please choose an image smaller than 20 MB.";return;
+ }
+
+ const op=document.getElementById("operation").value;
+ const reader=new FileReader();
+
+ reader.onload=e=>{
+  const img=new Image();
+  img.onload=()=>{
+   let w=img.width;
+   let h=img.height;
+
+   if(op==="resize"){
+    const newWidth=Number(document.getElementById("width").value);
+    if(!newWidth||newWidth<1||newWidth>10000){
+     statusBox.textContent="Enter a width between 1 and 10000.";
+     return;
+    }
+    h=Math.round(img.height*(newWidth/img.width));
+    w=newWidth;
+   }
+
+   const canvas=document.createElement("canvas");
+   canvas.width=w;
+   canvas.height=h;
+   const ctx=canvas.getContext("2d");
+   ctx.drawImage(img,0,0,w,h);
+
+   let type="image/jpeg";
+   let extension="jpg";
+   if(op==="png"){type="image/png";extension="png";}
+   if(op==="pdf"){
+    if(!window.jspdf){
+     statusBox.textContent="PDF library is loading. Please refresh and try again.";
+     return;
+    }
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({
+     orientation:w>h?"landscape":"portrait",
+     unit:"px",
+     format:[w,h]
+    });
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.9),"JPEG",0,0,w,h);
+    pdf.save("paktools-image.pdf");
+    statusBox.textContent="Your PDF has been downloaded!";
+    return;
+   }
+
+   const quality=Number(document.getElementById("quality").value)/100;
+   canvas.toBlob(blob=>{
+    if(!blob){statusBox.textContent="Could not process this image.";return;}
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download="paktools-image."+extension;
+    link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    statusBox.textContent="Success! Your image has been downloaded.";
+   },type,quality);
+  };
+  img.onerror=()=>statusBox.textContent="Could not read this image.";
+  img.src=e.target.result;
+ };
+ reader.onerror=()=>statusBox.textContent="Could not load your file.";
+ reader.readAsDataURL(file);
+});
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>
