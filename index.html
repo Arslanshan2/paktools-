@@ -516,6 +516,25 @@ document.getElementById("process").addEventListener("click",()=>{
  reader.readAsDataURL(file);
 });
 </script>
+ 
+async function compressPDF(){
+try{
+const file=document.getElementById('compressPDFFile').files[0];
+if(!file)return message('Please select a PDF file.');
+if(!window.PDFLib)return message('PDF library did not load. Check internet.');
+
+message('Processing PDF. Please wait...');
+
+const pdf=await PDFLib.PDFDocument.load(await file.arrayBuffer());
+const output=await pdf.save({useObjectStreams:true});
+
+download(new Blob([output],{type:'application/pdf'}),'compressed.pdf');
+message('PDF processed! Check whether the new file is smaller.');
+}catch(e){
+message('Could not process this PDF file.');
+}
+}
+ 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
