@@ -5,6 +5,164 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PakTools - Free Image & PDF Tools</title>
+<style>
+body{margin:0;font-family:Arial;background:#f3f6fb;color:#17233b}
+header{background:#0757c9;color:white;padding:25px 15px;text-align:center}
+header h1{margin:0;font-size:30px}
+header p{margin-bottom:0}
+main{max-width:650px;margin:20px auto;padding:12px}
+.tool{background:white;padding:18px;margin:14px 0;border-radius:12px;box-shadow:0 2px 9px #0001}
+h2{font-size:19px;margin-top:0}
+input{display:block;margin:12px 0;max-width:100%}
+button{background:#0757c9;color:white;border:0;padding:12px 18px;border-radius:7px;font-size:15px}
+button:disabled{opacity:.5}
+#status{white-space:pre-wrap;overflow-wrap:anywhere}
+footer{text-align:center;padding:20px;color:#667}
+</style>
+</head>
+<body>
+<header>
+<h1>PakTools</h1>
+<p>Free Image & PDF Tools for Everyone</p>
+</header>
+<main>
+<section class="tool">
+<h2>Image Compressor</h2>
+<input type="file" id="compressFile" accept="image/*">
+<button onclick="compressImage()">Compress Image</button>
+</section>
+
+<section class="tool">
+<h2>Image Resizer</h2>
+<input type="file" id="resizeFile" accept="image/*">
+<input type="number" id="width" placeholder="Width in pixels">
+<input type="number" id="height" placeholder="Height in pixels">
+<button onclick="resizeImage()">Resize Image</button>
+</section>
+
+<section class="tool">
+<h2>JPG to PNG / PNG to JPG</h2>
+<input type="file" id="convertFile" accept="image/*">
+<button onclick="convertImage('image/png')">Convert to PNG</button>
+<button onclick="convertImage('image/jpeg')">Convert to JPG</button>
+</section>
+
+<section class="tool">
+<h2>JPG / Image to PDF</h2>
+<input type="file" id="pdfImage" accept="image/*" multiple>
+<button onclick="imageToPDF()">Convert to PDF</button>
+</section>
+
+<section class="tool">
+<h2>Merge PDF Files</h2>
+<p>Select two or more PDF files to combine them.</p>
+<input type="file" id="mergeFiles" accept="application/pdf" multiple>
+<button onclick="mergePDF()">Merge PDFs</button>
+</section>
+
+<p id="status"></p>
+</main>
+<footer>© 2026 PakTools | Free Online Tools</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function message(t){document.getElementById('status').textContent=t}
+function download(blob,name){
+const url=URL.createObjectURL(blob);
+const a=document.createElement('a');
+a.href=url;a.download=name;a.click();
+setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function loadImage(file){
+return new Promise((resolve,reject)=>{
+const img=new Image(),url=URL.createObjectURL(file);
+img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};
+img.onerror=reject;img.src=url;
+});
+}
+function canvasBlob(canvas,type='image/jpeg'){
+return new Promise(resolve=>canvas.toBlob(resolve,type,.8));
+}
+async function compressImage(){
+try{
+const f=document.getElementById('compressFile').files[0];
+if(!f)return message('Please select an image.');
+const img=await loadImage(f),c=document.createElement('canvas');
+c.width=img.width;c.height=img.height;
+c.getContext('2d').drawImage(img,0,0);
+const b=await canvasBlob(c);
+download(b,'compressed-image.jpg');message('Compressed image downloaded.');
+}catch(e){message('Could not process this image.');}
+}
+async function resizeImage(){
+try{
+const f=document.getElementById('resizeFile').files[0];
+const w=Number(document.getElementById('width').value);
+const h=Number(document.getElementById('height').value);
+if(!f||w<1||h<1)return message('Select an image and enter valid width and height.');
+const img=await loadImage(f),c=document.createElement('canvas');
+c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+download(await canvasBlob(c),'resized-image.jpg');message('Resized image downloaded.');
+}catch(e){message('Could not resize image.');}
+}
+async function convertImage(type){
+try{
+const f=document.getElementById('convertFile').files[0];
+if(!f)return message('Please select an image.');
+const img=await loadImage(f),c=document.createElement('canvas');
+c.width=img.width;c.height=img.height;
+c.getContext('2d').drawImage(img,0,0);
+const b=await canvasBlob(c,type);
+download(b,type==='image/png'?'converted-image.png':'converted-image.jpg');
+message('Converted image downloaded.');
+}catch(e){message('Conversion failed.');}
+}
+async function imageToPDF(){
+try{
+const files=[...document.getElementById('pdfImage').files];
+if(!files.length)return message('Select at least one image.');
+const {jsPDF}=window.jspdf;
+const pdf=new jsPDF();
+for(let i=0;i<files.length;i++){
+const img=await loadImage(files[i]);
+if(i>0)pdf.addPage();
+const ratio=Math.min(190/img.width,270/img.height);
+const w=img.width*ratio,h=img.height*ratio;
+const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+c.getContext('2d').drawImage(img,0,0);
+pdf.addImage(c.toDataURL('image/jpeg'),'JPEG',10,10,w,h);
+}
+pdf.save('images.pdf');message('PDF downloaded.');
+}catch(e){message('PDF conversion failed.');}
+}
+async function mergePDF(){
+try{
+const files=[...document.getElementById('mergeFiles').files];
+if(files.length<2)return message('Please select at least two PDF files.');
+if(!window.PDFLib)return message('PDF library did not load. Check your internet connection.');
+const merged=await PDFLib.PDFDocument.create();
+for(const file of files){
+const bytes=await file.arrayBuffer();
+const pdf=await PDFLib.PDFDocument.load(bytes);
+const pages=await merged.copyPages(pdf,pdf.getPageIndices());
+pages.forEach(page=>merged.addPage(page));
+}
+const output=await merged.save();
+download(new Blob([output],{type:'application/pdf'}),'merged.pdf');
+message('Merged PDF downloaded successfully.');
+}catch(e){message('Could not merge these PDFs. Check that the files are valid and not password protected.');}
+}
+</script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PakTools - Free Image & PDF Tools</title>
 <meta name="description" content="Free online image and PDF tools for Pakistan. Compress, resize and convert images easily.">
 <style>
 *{box-sizing:border-box}
